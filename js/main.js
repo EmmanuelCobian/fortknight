@@ -2,6 +2,11 @@ let gameMode = 'classic';
 let isForfeited = false;
 let didGameStart = false;
 
+// Short-fuse timer variables
+let shortFuseTimer = null;
+const SHORT_FUSE_TIME_LIMIT = 2.5; // seconds
+let shortFuseTimeLeft = SHORT_FUSE_TIME_LIMIT;
+
 
 
 
@@ -17,6 +22,7 @@ for (let i = 0; i < 50; i++) {
 boardResize();
 
 let playerScore = 0;
+let playerLives = 1;
 let playerIndex = 24;
 let playerImage = document.querySelector('#wknight').cloneNode();
 playerImage.style.position = 'absolute';
@@ -60,6 +66,7 @@ function drawToIndex(node, index) {
 
 function drawPlayer() {
     document.querySelector('#score').innerText = playerScore;
+    document.querySelector('#lives').innerText = playerLives;
     resizePlayer();
     drawToIndex(playerImage, playerIndex);
     if (PH.getStatus()) PH.drawPossibleMoves();
@@ -81,6 +88,7 @@ function resetGame() {
     playerIndex = 24;
     playerScore = 0;
     combo = 0;
+    playerLives = (gameMode === 'short-fuse') ? 3 : 1;
     pieces.forEach((i) => {
         i.cleanup();
         i.icon.remove();
@@ -95,6 +103,9 @@ function resetGame() {
     if (gameMode == 'arcade') {
         document.getElementById("timer-box").style.display = 'block';
         arcadeModeExec();
+    } else if (gameMode == 'short-fuse') {
+        document.getElementById("timer-box").style.display = 'block';
+        startShortFuseTimer();
     } else {
         //clear the Timer if present from arcade mode
         document.getElementById("timer-box").style.display = 'none';
@@ -114,7 +125,7 @@ function forfeitGame() {
         //updateHighscores(playerScore, gameMode);
         document.querySelector('.gmode').disabled = false;
         gameIsPlayed = false;
-
+        if (gameMode == 'short-fuse') { clearShortFuseTimer(); }
     }
 }
 
@@ -264,6 +275,14 @@ board.addEventListener('click', (e) => {
             false
         );
         if (playerIsDead) {
+            playerLives -= 1;
+            let deadPieces = pieces.filter(pp => pp.index == playerIndex && !pp.deploymentCounter);
+            deadPieces.forEach(pp => {
+                pp.icon.remove();
+            });
+            pieces = pieces.filter(pp => !(pp.index == playerIndex && !pp.deploymentCounter));
+        }
+        if (playerLives == 0) {
             //reset the didGameStart
             didGameStart = false;
             pieces.map((p) => p.draw());
@@ -336,6 +355,8 @@ board.addEventListener('click', (e) => {
         playerScore++;
         checkAchievements();
         drawPlayer();
+
+        if (gameMode == 'short-fuse') { startShortFuseTimer(); }
     } else {
         if (gameIsPlayed) PH.blinkInvalidMove(squareIndex);
     }
@@ -468,6 +489,28 @@ function arcadeModeExec() {
     if (!isForfeited) {
         startMoveTimer();
         setTimeout(arcadeModeExec, 2500);
+    }
+}
+
+function startShortFuseTimer() {
+    clearShortFuseTimer();
+    shortFuseTimeLeft = SHORT_FUSE_TIME_LIMIT;
+    document.getElementById("timer-bar").max = SHORT_FUSE_TIME_LIMIT;
+    document.getElementById("timer-bar").value = 0;
+    shortFuseTimer = setInterval(() => {
+        shortFuseTimeLeft -= 0.045;
+        document.getElementById("timer-bar").value = SHORT_FUSE_TIME_LIMIT - shortFuseTimeLeft;
+        if (shortFuseTimeLeft <= 0) {
+            clearShortFuseTimer();
+            forfeitGame();
+        }
+    }, 45);
+}
+
+function clearShortFuseTimer() {
+    if (shortFuseTimer) {
+        clearInterval(shortFuseTimer);
+        shortFuseTimer = null;
     }
 }
 

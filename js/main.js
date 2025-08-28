@@ -276,11 +276,13 @@ board.addEventListener('click', (e) => {
         );
         if (playerIsDead) {
             playerLives -= 1;
-            let deadPieces = pieces.filter(pp => pp.index == playerIndex && !pp.deploymentCounter);
-            deadPieces.forEach(pp => {
-                pp.icon.remove();
-            });
-            pieces = pieces.filter(pp => !(pp.index == playerIndex && !pp.deploymentCounter));
+            if (gameMode == 'short-fuse' && playerLives > 0) {
+                let deadPieces = pieces.filter(pp => pp.index == playerIndex && !pp.deploymentCounter);
+                deadPieces.forEach(pp => {
+                    pp.icon.remove();
+                });
+                pieces = pieces.filter(pp => !(pp.index == playerIndex && !pp.deploymentCounter));
+            }
         }
         if (playerLives == 0) {
             //reset the didGameStart
